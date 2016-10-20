@@ -1,2 +1,2 @@
 import WebServer.__version__
-import WebServer.server
+from WebServer.server import WebServer

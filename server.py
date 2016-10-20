@@ -15,22 +15,33 @@ class Request():
 
         try:
             self.method, self.path, self.version = lines[0].split(' ')
-            self.headers = {k: v for k, v in (l.split(': ') for l in lines[1:-2])}
+            self.headers = {k: v for k, v in
+                            (l.split(': ')for l in lines[1:-2])}
         except ValueError:
-            self.method=None
-            self.headers=None
+            self.method = None
+            self.headers = None
 
     def __getattr__(self, name):
         try:
             return self.headers[name]
         except IndexError:
             raise AttributeError(name)
-        except TypeError:
+        except TypeError as e:
+            print('Request TypeError: ' + str(e))
             pass
 
 
 class Response():
-    """"""
+    """
+    Class to handle requests and create responses
+
+    Should be inherited to configure the on_request events
+    if no post_handler given.
+
+    req -- Request instance
+    homedir -- The server root directory
+    post_handler -- Class or function to handle Post requests
+    """
 
     STATUS = {
             200: 'OK',
@@ -38,7 +49,7 @@ class Response():
             404: 'File not found',
             500: 'Internal server error'
     }
-    EXPLORER = 1
+    DIR_LIST = 1
 
     dir_list = '''
 <html>
@@ -71,38 +82,50 @@ class Response():
     res_404 = '<center><h1>File not found.</h1><hr /></center>'
     res_500 = '<center><h1>Internal Server Error.</h1><hr /></center>'
 
-    def __init__(self, req, homedir):
+    def __init__(self, req, homedir, post_handler=None):
         self.req = req
         self.homedir = homedir
+        self.post_handler = post_handler
 
         if self.req.method == 'GET':
-            self._on_get_request(self.req)
+            self._on_get_request()
         elif self.req.method == 'POST':
-            self._on_post_request(self.req)
+            self._on_post_request()
+        elif self.req.method == 'HEAD':
+            self._on_head_request()
         else:
             self._on_bad_request()
 
         self.response = bytes('{}\r\n\r\n{}'.format(self.headers,
                                                     self.content), 'utf-8')
 
-    def _on_get_request(self, req):
-        self.content, self.status_code = self._get_content()
-        self.headers = self._get_headers(self.status_code)
+    def _on_get_request(self):
+        self.content, self.status_code = self.get_content()
+        self.headers = self.get_headers(self.status_code)
 
-    def _on_post_request(self, req):
-        pass
+    def _on_post_request(self):
+        if self.post_handler:
+            self.post_handler(self)
+        else:
+            print('Post event not configured')
+            self._on_error_request()
+
+    def _on_head_request(self):
+        self.content = ''
+        _, self.status_code = self.get_content()
+        self.headers = self.get_headers(self.status_code)
 
     def _on_bad_request(self):
         self.content = self.res_400
         self.status_code = 400
-        self.headers = self._get_headers(self.status_code)
+        self.headers = self.get_headers(self.status_code)
 
     def _on_error_request(self):
         self.content = self.res_500
         self.status_code = 500
-        self.headers = self._get_headers(self.status_code)
+        self.headers = self.get_headers(self.status_code)
 
-    def _get_headers(self, code):
+    def get_headers(self, code):
         return '\r\n'.join([
                     'HTTP/1.0 {} {}'.format(code, self.STATUS[code]),
                     'Server: uWebServer/{} MicroPython/{}'.format(__version__,
@@ -111,7 +134,7 @@ class Response():
                     'Content-Type: text/html'
         ])
 
-    def _get_content(self):
+    def get_content(self):
         # path = self.homedir + self.req.path
         req_path = self.req.path[:-1] + self.req.path[-1].replace('/', '')
         path = self.homedir + req_path
@@ -125,7 +148,7 @@ class Response():
                     with open(path + '/index.html', 'r') as f:
                         return f.read(), 200
 
-                if self.EXPLORER == 1:
+                if self.DIR_LIST == 1:
                     data = []
                     for d in dirs:
                         p = '{}/{}'.format(path, d)
@@ -152,11 +175,21 @@ class WebServer():
     port -- The port to host the Webserver on
     host -- Host to host the Webserver on
     homedir -- The root directory of the Webserver
+    handler -- Class to handle all requests and act as a Response
+    post_handler -- Class or function to handle Post requests
+                    (send through to handler)
     """
 
-    def __init__(self, port=80, host='0.0.0.0', homedir=os.getcwd()):
+    def __init__(self, port=80, host='0.0.0.0',
+                 homedir=os.getcwd(), handler=Response,
+                 post_handler=None):
         self.port = port
         self.host = host
+        self.handler = handler
+        self.post_handler = post_handler
+
+        # Remove trailing slash
+        homedir = homedir[:-1] + homedir[-1].replace('/', '')
         self.homedir = homedir
 
         self.logger = Logger()
@@ -173,7 +206,8 @@ class WebServer():
             client, client_info = self.socket.accept()
             data = client.recv(1024)
             req = Request(data)
-            res = Response(req, self.homedir)
+            res = self.handler(req, self.homedir,
+                               post_handler=self.post_handler)
 
             self.logger.log({
                 'host': client_info[0],
