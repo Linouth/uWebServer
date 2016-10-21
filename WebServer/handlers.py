@@ -18,10 +18,9 @@ class RequestHandler():
                 'OPTIONS': self.on_options,
                 'CONNECT': self.on_connect
         }
-        self.response = Response(self.__class__.__name__)
 
     def get_response(self, req, root):
-        self.response.valid = False
+        self.response = Response(self.__class__.__name__)
 
         self.req = req
         self.root = root
@@ -30,7 +29,7 @@ class RequestHandler():
         except KeyError:
             self.on_Invalid()
 
-        return self.response if self.response.valid else None
+        return self.response
 
     def get_file(self, req_path):
         # Remove trailing slash
@@ -123,7 +122,7 @@ class DirlistHandler(RequestHandler):
             self.response.content, code = self.get_dirs(self.req.path)
             self.response.init_header(code)
         except TypeError:
-            self.response.valid = False
+            self.response = None
 
     def get_dirs(self, req_path):
         """Get HTML formated dirlist"""
