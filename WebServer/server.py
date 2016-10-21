@@ -1,6 +1,7 @@
 import socket
 import os
 from .logging import Logger
+from .handlers import RequestHandler, DefaultHandler
 from .__version__ import __version__
 
 
@@ -31,7 +32,7 @@ class Request():
             pass
 
 
-class Response():
+class Response_old():
     """
     Class to handle requests and create responses
 
@@ -174,29 +175,30 @@ class WebServer():
 
     port -- The port to host the Webserver on
     host -- Host to host the Webserver on
-    homedir -- The root directory of the Webserver
+    root -- The root directory of the Webserver
     handler -- Class to handle all requests and act as a Response
     post_handler -- Class or function to handle Post requests
                     (send through to handler)
     """
 
     def __init__(self, port=80, host='0.0.0.0',
-                 homedir=os.getcwd(), handler=Response,
-                 post_handler=None):
+                 root=os.getcwd()):
+        self.handlers = [DefaultHandler()]
         self.port = port
         self.host = host
-        self.handler = handler
-        self.post_handler = post_handler
 
         # Remove trailing slash
-        homedir = homedir[:-1] + homedir[-1].replace('/', '')
-        self.homedir = homedir
+        root = root[:-1] + root[-1].replace('/', '')
+        self.root = root
 
         self.logger = Logger()
 
         self.socket = socket.socket()
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((host, port))
+
+    def add_handler(self, handler: RequestHandler):
+        self.handlers.append(handler)
 
     def start(self):
         self.logger.log('Starting WebServer')
@@ -206,8 +208,11 @@ class WebServer():
             client, client_info = self.socket.accept()
             data = client.recv(1024)
             req = Request(data)
-            res = self.handler(req, self.homedir,
-                               post_handler=self.post_handler)
+
+            for handler in reversed(self.handlers):
+                res = handler.get_response(req, self.root)
+                if res:
+                    break
 
             self.logger.log({
                 'host': client_info[0],
@@ -215,12 +220,13 @@ class WebServer():
                 'path': req.path,
                 'version': req.version,
                 'code': res.status_code,
-                'code_info': res.STATUS[res.status_code]
+                'code_info': res.header.STATUS[res.status_code]
             }, self.logger.CONNECTION)
 
-            client.send(res.response)
+            client.send(res.get())
 
             client.close()
+        self.stop()
 
     def stop(self):
         self.logger.log('Stopping WebServer')
@@ -228,11 +234,11 @@ class WebServer():
 
     def __repr__(self):
         return '<class WebServer({}, {}, {})>'\
-                .format(self.host, self.port, self.homedir)
+                .format(self.host, self.port, self.root)
 
 
 def main():
-    server = WebServer(80, homedir='/srv')
+    server = WebServer(80, root='/srv')
     try:
         server.start()
     except KeyboardInterrupt:
