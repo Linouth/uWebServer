@@ -159,7 +159,7 @@ class WebServer():
         self.host = host
 
         # Remove trailing slash
-        root = root[:-1] + root[-1].replace('/', '')
+        root = root.rstrip('/')
         self.root = root
 
         self.logger = Logger()
