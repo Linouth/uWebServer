@@ -1,35 +1,9 @@
-import socket
-import os
-from .logging import Logger
 from .handlers import RequestHandler, DefaultHandler
+from .logging import Logger
+from .request import Request
 from .__version__ import __version__
-
-
-class Request():
-    """
-    Request received from the client
-
-    data -- Received data in bytes
-    """
-    def __init__(self, data):
-        lines = [d.strip() for d in data.decode('utf-8').split('\r\n')]
-
-        try:
-            self.method, self.path, self.version = lines[0].split(' ')
-            self.headers = {k: v for k, v in
-                            (l.split(': ')for l in lines[1:-2])}
-        except ValueError:
-            self.method = None
-            self.headers = None
-
-    def __getattr__(self, name):
-        try:
-            return self.headers[name]
-        except IndexError:
-            raise AttributeError(name)
-        except TypeError as e:
-            print('Request TypeError: ' + str(e))
-            pass
+import os
+import socket
 
 
 class Response_old():
@@ -175,10 +149,7 @@ class WebServer():
 
     port -- The port to host the Webserver on
     host -- Host to host the Webserver on
-    root -- The root directory of the Webserver
-    handler -- Class to handle all requests and act as a Response
-    post_handler -- Class or function to handle Post requests
-                    (send through to handler)
+    root -- The root directory of the Webserver (default $(cwd))
     """
 
     def __init__(self, port=80, host='0.0.0.0',
@@ -198,9 +169,17 @@ class WebServer():
         self.socket.bind((host, port))
 
     def add_handler(self, handler: RequestHandler):
+        """Add RequestHandler to the WebServer.
+        Handlers are prioritized based on the order,
+        meaning last added handler is used first.
+
+        handler -- RequestHandler to add
+        """
+
         self.handlers.append(handler)
 
     def start(self):
+        """Start the WebServer"""
         self.logger.log('Starting WebServer')
         self.socket.listen(5)
 
@@ -220,7 +199,8 @@ class WebServer():
                 'path': req.path,
                 'version': req.version,
                 'code': res.status_code,
-                'code_info': res.header.STATUS[res.status_code]
+                'code_info': res.header.STATUS[res.status_code],
+                'handler': res.handler_name
             }, self.logger.CONNECTION)
 
             client.send(res.get())

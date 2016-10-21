@@ -10,7 +10,7 @@ class Logger():
 
     log_format = [
             '[ ] {}',  # MSG
-            '[ ] {host} - {method} {path} {version} - {code} {code_info}',  # CONNECTION
+            '[ ] {host} - {handler} - {method} {path} {version} - {code} {code_info}',  # CONNECTION
             '[W] {}',  # WARNING
             '[E] {}'  # ERROR
     ]

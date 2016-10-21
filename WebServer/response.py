@@ -16,37 +16,42 @@ class Response():
     class Header():
         STATUS = {
                 200: 'OK',
+                301: 'Moved Permanently',
                 400: 'Bad Request',
                 404: 'Not Found',
                 500: 'Internal Server Error'
         }
 
-        header = []
+        status_line = ''
+        response_fields = []
 
         def __init__(self):
             self.initialized = False
 
         def init(self, code: int):
-            self.header.append('HTTP/1.0 {} {}'.format(code,
-                                                       self.STATUS[code]))
+            self.status_line = ('HTTP/1.0 {} {}'.format(code,
+                                                        self.STATUS[code]))
             self.add('Server', 'uWebServer/{} MicroPython/{}'
                                .format(__version__, os.uname()[2]))
             self.initialized = True
 
         def add(self, key, value):
-            self.header.append('{}: {}'.format(key, value))
+            self.response_fields.append('{}: {}'.format(key, value))
 
         def __str__(self):
-            return '\r\n'.join(self.header)
+            return (self.status_line + '\r\n' +
+                    '\r\n'.join(self.response_fields))
 
     def __init__(self, handler_name):
         self.handler_name = handler_name
         self.header = self.Header()
         self.content = ''
+        self.valid = False
 
     def init_header(self, code: int):
         self.status_code = code
         self.header.init(code)
+        self.valid = True
 
     def get(self):
         if not self.header.initialized:
