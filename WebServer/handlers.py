@@ -16,7 +16,9 @@ class RequestHandler():
                 'PUT': self.on_put,
                 'DELETE': self.on_delete,
                 'OPTIONS': self.on_options,
-                'CONNECT': self.on_connect
+                'CONNECT': self.on_connect,
+                'TRACE': self.on_trace,
+                'PATCH': self.on_patch
         }
 
     def get_response(self, req, root):
@@ -27,7 +29,10 @@ class RequestHandler():
         try:
             self.methods[req.method]()
         except KeyError:
-            self.on_Invalid()
+            self.on_invalid()
+        except NotImplementedError:
+            print('Method {} not implemented'.format(req.method))
+            self.on_invalid()
 
         return self.response
 
@@ -65,6 +70,12 @@ class RequestHandler():
     def on_connect(self):
         raise NotImplementedError()
 
+    def on_trace(self):
+        raise NotImplementedError()
+
+    def on_patch(self):
+        raise NotImplementedError()
+
     def on_invalid(self):
         raise NotImplementedError()
 
@@ -75,9 +86,16 @@ class RequestHandler():
 
 
 class DefaultHandler(RequestHandler):
+    res_400 = '<html><body><center><h1>Bad Request.</h1>' +\
+              '<hr /></center></body></html>'
+
     def on_get(self):
         self.response.content, code = self.get_file(self.req.path)
         self.response.init_header(code)
+
+    def on_invalid(self):
+        self.response.content = self.res_400
+        self.response.init_header(400)
 
 
 class DirlistHandler(RequestHandler):
