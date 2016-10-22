@@ -6,6 +6,8 @@ class Request():
     host -- Address from client
     """
     def __init__(self, host, data):
+        self.host = host
+
         lines = [d.strip() for d in data.decode('utf-8').split('\r\n')]
 
         try:
