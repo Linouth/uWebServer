@@ -3,8 +3,9 @@ class Request():
     Request received from the client
 
     data -- Received data in bytes
+    host -- Address from client
     """
-    def __init__(self, data):
+    def __init__(self, host, data):
         lines = [d.strip() for d in data.decode('utf-8').split('\r\n')]
 
         try:

@@ -46,10 +46,12 @@ class Response():
         self.handler_name = handler_name
         self.header = self.Header()
         self.content = ''
+        self.valid = False
 
     def init_header(self, code: int):
         self.status_code = code
         self.header.init(code)
+        self.valid = True
 
     def get(self):
         if not self.header.initialized:

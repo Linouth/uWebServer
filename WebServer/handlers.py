@@ -21,20 +21,23 @@ class RequestHandler():
                 'PATCH': self.on_patch
         }
 
-    def get_response(self, req, root):
+    def get_response(self, req, root, logger):
         self.response = Response(self.__class__.__name__)
 
         self.req = req
         self.root = root
+        self.logger = logger
+
         try:
             self.methods[req.method]()
         except KeyError:
             self.on_invalid()
         except NotImplementedError:
-            print('Method {} not implemented'.format(req.method))
+            self.logger.log('Method {} not implemented'.format(req.method),
+                            self.logger.WARNING)
             self.on_invalid()
 
-        return self.response
+        return self.response if self.response.valid else None
 
     def get_file(self, req_path):
         # Remove trailing slash
@@ -50,7 +53,52 @@ class RequestHandler():
             return self.res_404, 404
 
     def on_get(self):
-        raise NotImplementedError()
+        pass
+
+    def on_post(self):
+        pass
+
+    def on_head(self):
+        pass
+
+    def on_put(self):
+        pass
+
+    def on_delete(self):
+        pass
+
+    def on_options(self):
+        pass
+
+    def on_connect(self):
+        pass
+
+    def on_trace(self):
+        pass
+
+    def on_patch(self):
+        pass
+
+    def on_invalid(self):
+        pass
+
+    def __repr__(self):
+        return '<class RequestHandler({} {} {})>'.format(self.req.method,
+                                                         self.req.path,
+                                                         self.req.version)
+
+
+class DefaultHandler(RequestHandler):
+    res_400 = '<html><body><center><h1>Bad Request.</h1>' +\
+              '<hr /></center></body></html>'
+
+    def on_get(self):
+        self.response.content, code = self.get_file(self.req.path)
+        self.response.init_header(code)
+
+    def on_invalid(self):
+        self.response.content = self.res_400
+        self.response.init_header(400)
 
     def on_post(self):
         raise NotImplementedError()
@@ -75,27 +123,6 @@ class RequestHandler():
 
     def on_patch(self):
         raise NotImplementedError()
-
-    def on_invalid(self):
-        raise NotImplementedError()
-
-    def __repr__(self):
-        return '<class RequestHandler({} {} {})>'.format(self.req.method,
-                                                         self.req.path,
-                                                         self.req.version)
-
-
-class DefaultHandler(RequestHandler):
-    res_400 = '<html><body><center><h1>Bad Request.</h1>' +\
-              '<hr /></center></body></html>'
-
-    def on_get(self):
-        self.response.content, code = self.get_file(self.req.path)
-        self.response.init_header(code)
-
-    def on_invalid(self):
-        self.response.content = self.res_400
-        self.response.init_header(400)
 
 
 class DirlistHandler(RequestHandler):
@@ -184,3 +211,11 @@ class IndexHandler(RequestHandler):
         except OSError:
             # No file or dir found
             return None
+
+
+class UploadHandler(RequestHandler):
+    def on_post(self):
+        print(self.req.path)
+        if self.req.path == '/upload':
+            self.response.content = 'File Uploaded.'
+            self.response.init_header(200)

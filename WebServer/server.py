@@ -48,10 +48,10 @@ class WebServer():
         while True:
             client, client_info = self.socket.accept()
             data = client.recv(1024)
-            req = Request(data)
+            req = Request(client_info[0], data)
 
             for handler in reversed(self.handlers):
-                res = handler.get_response(req, self.root)
+                res = handler.get_response(req, self.root, self.logger)
                 if res:
                     break
 
