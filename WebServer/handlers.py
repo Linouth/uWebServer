@@ -158,8 +158,8 @@ class DirlistHandler(RequestHandler):
         try:
             self.response.content, code = self.get_dirs(self.req.path)
             self.response.init_header(code)
-        except TypeError:
-            self.response = None
+        except TypeError:  # Received NoneType
+            pass
 
     def get_dirs(self, req_path):
         """Get HTML formated dirlist"""
@@ -193,8 +193,8 @@ class IndexHandler(RequestHandler):
         try:
             self.response.content, code = self.get_index(self.req.path)
             self.response.init_header(code)
-        except TypeError:
-            self.response = None
+        except TypeError:  # Received NoneType
+            pass
 
     def get_index(self, req_path):
         # Remove trailing slash

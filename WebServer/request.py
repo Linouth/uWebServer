@@ -7,6 +7,7 @@ class Request():
     def __init__(self, data):
         lines = [d.strip() for d in data.decode('utf-8').split('\r\n')]
         self.boundary = None
+        self.content_type = ''
 
         try:
             self.method, self.path, self.version = lines[0].split(' ')
