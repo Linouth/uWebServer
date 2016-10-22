@@ -214,8 +214,9 @@ class IndexHandler(RequestHandler):
 
 
 class UploadHandler(RequestHandler):
+    # TODO: decorators instead of if statements? (a la flask)
     def on_post(self):
-        print(self.req.path)
         if self.req.path == '/upload':
-            self.response.content = 'File Uploaded.'
+            # self.response.content = 'File Uploaded.'
+            self.response.content = str(self.req.headers)
             self.response.init_header(200)

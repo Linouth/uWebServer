@@ -3,6 +3,7 @@ from .logging import Logger
 from .request import Request
 import os
 import socket
+import time
 
 
 class WebServer():
@@ -47,8 +48,12 @@ class WebServer():
 
         while True:
             client, client_info = self.socket.accept()
-            data = client.recv(1024)
-            req = Request(client_info[0], data)
+            head = client.recv(1024)
+
+            req = Request(head)
+            if req.boundary:
+                data = self._recv_data(client)
+                req.add_data(data)
 
             for handler in reversed(self.handlers):
                 res = handler.get_response(req, self.root, self.logger)
@@ -73,6 +78,26 @@ class WebServer():
     def stop(self):
         self.logger.log('Stopping WebServer')
         self.socket.close()
+
+    def _recv_data(self, socket, buff=2048, timeout=1.5):
+        socket.setblocking(False)
+
+        data = []
+
+        t = time.time()
+        while True:
+            if time.time()-t > timeout:
+                break
+
+            try:
+                d = socket.recv(buff)
+                if d:
+                    data.append(d)
+                else:
+                    time.sleep(0.1)
+            except:
+                pass
+        return b''.join(data)
 
     def __repr__(self):
         return '<class WebServer({}, {}, {})>'\
