@@ -51,9 +51,9 @@ class WebServer():
             head = client.recv(1024)
 
             req = Request(head)
-            if req.boundary:
-                data = self._recv_data(client)
-                req.add_data(data)
+            # if req.boundary:
+            #     data = self._recv_data(client)
+            #     req.add_data(data)
 
             for handler in reversed(self.handlers):
                 res = handler.get_response(req, self.root, self.logger)
@@ -63,7 +63,7 @@ class WebServer():
             self.logger.log({
                 'host': client_info[0],
                 'method': req.method,
-                'path': req.path,
+                'path': req.raw_path,
                 'version': req.version,
                 'code': res.status_code,
                 'code_info': res.header.STATUS[res.status_code],

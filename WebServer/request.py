@@ -6,25 +6,39 @@ class Request():
     """
     def __init__(self, data):
         lines = [d.strip() for d in data.decode('utf-8').split('\r\n')]
-        self.boundary = None
-        self.content_type = ''
+        self.boundary = 'NoBoundAry'
 
         try:
-            self.method, self.path, self.version = lines[0].split(' ')
+            self.method, self.raw_path, self.version = lines[0].split(' ')
             self.headers = {k: v for k, v in
                             (l.split(': ') for l in lines[1:-2])}
             self.host = self.headers['Host']
 
-            # TODO: Save post data in Request.post.fieldname format
-            #       (Also for big files)
-            if 'multipart/form-data' in self.content_type:
-                self.boundary = self.content_type\
-                                .split(' ')[-1].split('=')[1]
+            self.path = self.raw_path.split('?', 1)[0]
 
-            if 'application/x-www-form-urlencoded' in self.content_type:
-                # Split data to dict format name:value
-                self.post_data = {k: v for k, v in (f.split('=')
-                                  for f in lines[-1].split('&'))}
+            # Save GET data to get dict
+            if '?' in self.raw_path:
+                data = self.raw_path.split('?', 1)[1]
+                self.get = {k: v for k, v in
+                            (l.split('=', 1) for l in data.split('&'))}
+
+            if self.method == 'POST':
+                if 'boundary=' in self.headers['Content-Type']:
+                    self.boundary = self.headers['Content-Type']\
+                                    .split(' ')[-1].split('=')[1]
+
+                # POST data available
+                if lines[-1] is not '':
+                    if self.boundary in lines[-1]:
+                        # Handle 'multipart/form-data'
+                        print('Handle multipart/form-data')
+                        pass
+                    else:
+                        self.post = {k: v for k, v in
+                                     (l.split('=', 1) for l in
+                                         lines[-1].split('&'))}
+                    print(self.post)
+
         except ValueError:
             self.method = None
             self.headers = None
@@ -50,12 +64,13 @@ class Request():
             f['data'] = l[3]
             self.forms.append(f)
 
-    def __getattr__(self, name):
-        try:
-            return self.headers['-'.join([n.capitalize()
-                                          for n in name.split('_')])]
-        except IndexError:
-            raise AttributeError(name)
-        except TypeError as e:
-            print('Request TypeError: ' + str(e))
-            pass
+    # def __getattr__(self, name):
+    #     try:
+    #         return self.headers['-'.join([n.capitalize()
+    #                                       for n in name.split('_')])]
+    #     except IndexError:
+    #         # raise AttributeError(name)
+    #         return None
+    #     except TypeError as e:
+    #         print('Request TypeError: ' + str(e))
+    #         pass
